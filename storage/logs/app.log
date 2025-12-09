@@ -1,0 +1,51 @@
+[2025-11-28 18:50:02] Email send failed: Could not instantiate mail function.
+[2025-11-28 18:50:02] SMS skipped (no API key) to +917015352534: Library OTP: 059853. Valid for 10 minutes.
+[2025-11-28 18:50:02] Failed to send email OTP to rainymittal10@gmail.com (987002)
+[2025-11-28 18:50:02] Failed to send SMS OTP to +917015352534 (059853)
+[2025-11-28 19:12:10] Email send failed: Could not instantiate mail function.
+[2025-11-28 19:12:10] SMS skipped (no API key) to 7015352534: Your OTP is: 991612
+[2025-11-29 15:13:25] Email sent successfully to: ishaishant27@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-11-29 15:13:25] SMS skipped (no API key configured) to +917488008497: Your OTP code is: 958455. It expires in 10 minutes. - Library Management System
+[2025-11-29 15:29:53] Email sent successfully to: ujjwalff01@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-11-29 15:33:03] Email sent successfully to: ujjwalff01@gmail.com - Subject: Book request approved
+[2025-11-29 16:13:59] Email sent successfully to: laxyatavarshney@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-11-29 16:20:06] Email sent successfully to: laxyatavarshney@gmail.com - Subject: Book request approved
+[2025-12-01 21:17:41] Email sent successfully to: ishaishant27@gmail.com - Subject: Book request approved
+[2025-12-04 12:00:32] Email sent successfully to: vaibhav.sv007@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-04 12:05:40] Email sent successfully to: vaibhav.sv007@gmail.com - Subject: Book request approved
+[2025-12-06 22:24:29] Email sent successfully to: ishaishant27@gmail.com - Subject: Book request approved
+[2025-12-07 14:49:30] Email sent successfully to: saakshirathee21@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-07 14:53:18] Email sent successfully to: saakshirathee21@gmail.com - Subject: Book request approved
+[2025-12-07 14:53:23] Email sent successfully to: saakshirathee21@gmail.com - Subject: Book request approved
+[2025-12-07 16:16:43] Email sent successfully to: ujjwalff01@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-08 13:03:31] Email sent successfully to: montisaini60@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-08 13:18:15] Email send failed to montisaini60@gmail.com: SMTP Error: Could not connect to SMTP host. Failed to connect to server SMTP server error: Failed to connect to server Additional SMTP info: php_network_getaddresses: getaddrinfo for smtp.gmail.com failed: No such host is known | Exception: SMTP Error: Could not connect to SMTP host. Failed to connect to server
+[2025-12-08 13:21:14] Email sent successfully to: montisaini60@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-08 13:22:08] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:13] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:13] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:14] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:16] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:21] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:22] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:23] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:23] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:24] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:25] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:26] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:22:32] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:25:27] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:25:29] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:26:18] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:26:29] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:26:38] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 13:26:40] Fingerprint register failed: Duplicate entry '8fd251fa3350a1871a7b64299b86f46d' for key 'user_fingerprints.fingerprint_hash'
+[2025-12-08 14:44:06] Email sent successfully to: abhishekkumarofficial1303@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-08 14:47:06] Email sent successfully to: abhishekkumarofficial1303@gmail.com - Subject: Book request approved
+[2025-12-08 14:47:16] Email sent successfully to: ujjwalff01@gmail.com - Subject: Book request approved
+[2025-12-09 10:41:47] Email sent successfully to: rajkumar.cse@quantumeducation.in - Subject: Your Email OTP Code - Library Management System
+[2025-12-09 13:32:24] Email send failed to itsnishasharma0104@gmail.com: SMTP Error: Could not connect to SMTP host. Failed to connect to server SMTP server error: Failed to connect to server Additional SMTP info: php_network_getaddresses: getaddrinfo for smtp.gmail.com failed: No such host is known | Exception: SMTP Error: Could not connect to SMTP host. Failed to connect to server
+[2025-12-09 13:36:51] Email sent successfully to: itsnishasharma0104@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-09 13:39:45] Email sent successfully to: itsnishasharma0104@gmail.com - Subject: Book request approved
+[2025-12-09 13:49:48] Email sent successfully to: vksingh087@gmail.com - Subject: Your Email OTP Code - Library Management System
+[2025-12-09 13:56:36] Email sent successfully to: vksingh087@gmail.com - Subject: Book request approved
