@@ -29,9 +29,10 @@ if (!defined('MAX_TEACHER_ISSUES')) define('MAX_TEACHER_ISSUES', 6);
 // Paths
 define('UPLOAD_DIR', __DIR__ . '/uploads');
 define('BOOK_UPLOAD_DIR', UPLOAD_DIR . '/books');
+define('PROFILE_UPLOAD_DIR', UPLOAD_DIR . '/profiles');
 define('LOG_DIR', __DIR__ . '/storage/logs');
 
-foreach ([UPLOAD_DIR, BOOK_UPLOAD_DIR, LOG_DIR] as $dir) {
+foreach ([UPLOAD_DIR, BOOK_UPLOAD_DIR, PROFILE_UPLOAD_DIR, LOG_DIR] as $dir) {
 	if (!is_dir($dir)) {
 		mkdir($dir, 0775, true);
 	}
@@ -85,6 +86,7 @@ ensure_column($conn, 'users', 'otp_last_sent_at', "DATETIME DEFAULT NULL");
 ensure_column($conn, 'users', 'fingerprint_token', "VARCHAR(255) DEFAULT NULL");
 ensure_column($conn, 'users', 'fingerprint_registered_at', "DATETIME DEFAULT NULL");
 ensure_column($conn, 'users', 'phone', "VARCHAR(20) DEFAULT NULL");
+ensure_column($conn, 'users', 'profile_picture', "VARCHAR(255) DEFAULT NULL");
 
 ensure_column($conn, 'user_fingerprints', 'device_label', "VARCHAR(120) DEFAULT NULL");
 ensure_column($conn, 'user_fingerprints', 'last_used_at', "DATETIME DEFAULT NULL");
@@ -519,6 +521,109 @@ function verify_email_code(mysqli $conn, string $email, string $otp): array {
 
     refresh_current_user($conn);
     return ['success' => true, 'message' => 'Email verified successfully.'];
+}
+
+function registration_otp_session_key(string $email): string {
+	return strtolower(trim($email));
+}
+
+function build_otp_email_body(string $otp): string {
+	return "
+    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h2 style='color: #333;'>Library Management System</h2>
+        <p>Hello,</p>
+        <p>Your One-Time Password (OTP) for email verification is:</p>
+        <div style='background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; border-radius: 5px;'>
+            {$otp}
+        </div>
+        <p>This OTP will expire in " . OTP_EXPIRY_MINUTES . " minutes.</p>
+        <p style='color: #666; font-size: 12px;'>If you didn't request this code, please ignore this email.</p>
+        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+        <p style='color: #999; font-size: 11px;'>This is an automated message. Please do not reply.</p>
+    </div>
+    ";
+}
+
+function send_registration_email_otp(mysqli $conn, string $email, bool $force = false): array {
+	$email = strtolower(trim($email));
+	if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+		return ['success' => false, 'message' => 'Please enter a valid email address.'];
+	}
+	if (find_user_by_email($conn, $email)) {
+		return ['success' => false, 'message' => 'Email already registered.'];
+	}
+
+	if (!isset($_SESSION['registration_otps'])) {
+		$_SESSION['registration_otps'] = [];
+	}
+
+	$key = registration_otp_session_key($email);
+	$existing = $_SESSION['registration_otps'][$key] ?? null;
+	if ($existing && !can_send_otp_again($existing['sent_at'] ?? null, $force)) {
+		return ['success' => false, 'message' => 'Please wait before requesting a new OTP.'];
+	}
+
+	$otp = generate_otp();
+	$_SESSION['registration_otps'][$key] = [
+		'otp' => $otp,
+		'expires_at' => time() + OTP_EXPIRY_MINUTES * 60,
+		'sent_at' => date('Y-m-d H:i:s'),
+		'attempts' => 0,
+		'verified' => false,
+	];
+	unset($_SESSION['verified_registration_emails'][$key]);
+
+	$emailResult = send_email(
+		$email,
+		'Your Email OTP Code - Library Management System',
+		build_otp_email_body($otp)
+	);
+
+	if (!$emailResult) {
+		unset($_SESSION['registration_otps'][$key]);
+		return ['success' => false, 'message' => 'Failed to send Email OTP.'];
+	}
+
+	return ['success' => true, 'message' => 'OTP sent to your email.'];
+}
+
+function verify_registration_email_otp(string $email, string $otp): array {
+	$email = strtolower(trim($email));
+	$key = registration_otp_session_key($email);
+	$data = $_SESSION['registration_otps'][$key] ?? null;
+
+	if (!$data) {
+		return ['success' => false, 'message' => 'OTP expired or not found. Click Verify to send a new code.'];
+	}
+	if ($data['expires_at'] < time()) {
+		unset($_SESSION['registration_otps'][$key]);
+		return ['success' => false, 'message' => 'OTP expired. Click Verify to send a new code.'];
+	}
+	if (($data['attempts'] ?? 0) >= OTP_MAX_ATTEMPTS) {
+		return ['success' => false, 'message' => 'Too many incorrect attempts. Click Verify to request a new OTP.'];
+	}
+	if ($data['otp'] !== $otp) {
+		$_SESSION['registration_otps'][$key]['attempts'] = ($data['attempts'] ?? 0) + 1;
+		return ['success' => false, 'message' => 'Incorrect OTP.'];
+	}
+
+	if (!isset($_SESSION['verified_registration_emails'])) {
+		$_SESSION['verified_registration_emails'] = [];
+	}
+	$_SESSION['registration_otps'][$key]['verified'] = true;
+	$_SESSION['verified_registration_emails'][$key] = true;
+
+	return ['success' => true, 'message' => 'Email verified successfully.'];
+}
+
+function is_registration_email_verified(string $email): bool {
+	$key = registration_otp_session_key($email);
+	return !empty($_SESSION['verified_registration_emails'][$key]);
+}
+
+function clear_registration_email_verification(string $email): void {
+	$key = registration_otp_session_key($email);
+	unset($_SESSION['registration_otps'][$key], $_SESSION['verified_registration_emails'][$key]);
 }
 
 
@@ -1148,6 +1253,155 @@ function log_book_view(mysqli $conn, int $userId, int $bookId): void {
 	mysqli_stmt_close($stmt);
 }
 
+function pick_funny_message(string $category): string {
+	$messages = [
+		'welcome' => [
+			'Back again? You love books more than textbooks love exams! 📚',
+			'Welcome back! Did you miss me or the books?',
+			'Welcome back! Your reading addiction is showing... and we love it! 😍',
+			'Dashboard again? You\'re more consistent than my diet.',
+			'At this point, you deserve a VIP pass.',
+		],
+		'overdue' => [
+			'🚨 Bro, your book has been in vacation mode longer than you. Return it ASAP!',
+			'📖 That book wasn\'t issued for adoption. Please bring it back. 😭',
+			'⚠️ Your borrowed book is ghosting the library. We need closure.',
+			'👀 The library wants its book back. This isn\'t a long-distance relationship.',
+			'💀 Your book is officially older in your bag than some friendships. Return it!',
+			'📚 Library checking in: Are you reading the book or raising it as your child?',
+			'🚔 Book Police Alert: Your due date left the chat days ago.',
+			'🔥 The book is overdue. The librarian is trying very hard to stay calm.',
+			'🤨 You borrowed a book, not a lifetime subscription. Return it now.',
+			'📢 Plot twist: The main character returned the book on time. Be like them.',
+			'📚 Return the book before it becomes library folklore.',
+			'💀 Due date expired. Character development needed.',
+			'🚨 Delulu is not the solulu. Return the book.',
+			'📖 Book borrowed: ✅ Returned: ❌ Excuses: Unlimited.',
+			'🔥 You\'re not late, you\'re just aggressively overdue.',
+			'👁️ The librarian sees everything. Return the book.',
+			'🚔 Stop hiding. The book knows where you live. 😭',
+		],
+		'fine_pending' => [
+			'💰 Your fine is growing faster than your screen time.',
+			'🚨 Outstanding Fine Detected. Your wallet is in danger.',
+			'😭 The fine keeps increasing while you keep ignoring us. Who\'s winning?',
+			'💸 Your fine has entered its "influencer growth era." Pay it ASAP.',
+			'📈 Fine Status: Stonks. Every day you wait, it gets bigger.',
+			'☕ Skip one coffee and pay your library fine. Problem solved.',
+			'😎 Your fine is collecting interest in your absence. Respectfully, pay it.',
+			'🚨 Financial Responsibility Challenge: Library Edition.',
+			'💀 At this point, the fine misses you more than the library does.',
+			'🤑 The fine called. It wants attention and payment.',
+			'💸 Your fine is giving "premium subscription" vibes. Cancel it now.',
+		],
+		'due_tomorrow' => [
+			'⏰ Last free day alert! Return your book tomorrow or your wallet starts taking damage. 💸',
+			'🚨 Tomorrow is the due date. After that, the fine enters the chat.',
+			'📖 Your book\'s checkout era ends tomorrow. Return it before the fine era begins.',
+			'💀 Tomorrow is your final boss level. Defeat it by returning the book.',
+			'⚠️ Return the book tomorrow. Future You will thank Present You. Your wallet too.',
+			'🚔 Return the book tomorrow or the fine will start its villain arc.',
+			'💸 Your book has one day of immunity left. Use it wisely.',
+			'📚 Reminder: Tomorrow = Return Book. Day After Tomorrow = Pay Fine. Choose your fighter.',
+			'😭 We are giving you one last chance before the fine starts multiplying like group project problems.',
+			'🔥 Return tomorrow or unlock the premium feature: Daily Fine Charges™.',
+			'POV: You have 24 hours to return the book before your balance says "goodbye." 💸',
+			'📢 Tomorrow is the due date. Don\'t let a ₹5 fine become a ₹50 character-development story.',
+			'👀 The library is watching. Return the book tomorrow and nobody gets fined.',
+			'💀 Due Tomorrow. Fine After Tomorrow. Mathematics is unavoidable.',
+			'🤝 Let\'s keep this friendship healthy—return the book tomorrow.',
+			'📚 Return tomorrow. Fine starts the next day.',
+			'⏰ 24 hours left to avoid a fine!',
+			'💸 Tomorrow = Free. After that = Fee.',
+			'🚨 Last reminder before fine activation!',
+			'📖 Return tomorrow, save your money.',
+			'🔥 One day left. Your wallet is counting on you.',
+			'😎 Be the main character. Return it on time.',
+		],
+	];
+	$pool = $messages[$category] ?? ['You have a new notification! 🎉'];
+	return $pool[array_rand($pool)];
+}
+
+function calculate_user_pending_fine(mysqli $conn, int $userId): float {
+	$total = 0.0;
+	$stmt = mysqli_prepare($conn, "SELECT issue_date, return_date, due_date, fine, fine_status, fine_rate FROM issued_books WHERE user_id=?");
+	mysqli_stmt_bind_param($stmt, 'i', $userId);
+	mysqli_stmt_execute($stmt);
+	$res = mysqli_stmt_get_result($stmt);
+	while ($row = mysqli_fetch_assoc($res)) {
+		if (($row['fine_status'] ?? 'unpaid') === 'paid') {
+			continue;
+		}
+		$dueDate = $row['due_date'] ?: compute_due_date($row['issue_date'])->format('Y-m-d');
+		$fineRate = (float)($row['fine_rate'] ?? FINE_PER_DAY);
+		if (empty($row['return_date'])) {
+			$total += compute_fine($row['issue_date'], null, $dueDate, $fineRate);
+		} else {
+			$storedFine = (float)($row['fine'] ?? 0);
+			$total += $storedFine > 0 ? $storedFine : compute_fine($row['issue_date'], $row['return_date'], $dueDate, $fineRate);
+		}
+	}
+	mysqli_stmt_close($stmt);
+	return round($total, 2);
+}
+
+function get_user_profile_data(mysqli $conn, int $userId): ?array {
+	$stmt = mysqli_prepare($conn, "SELECT id, name, email, phone, role, status, email_verified, profile_picture, created_at FROM users WHERE id=? LIMIT 1");
+	mysqli_stmt_bind_param($stmt, 'i', $userId);
+	mysqli_stmt_execute($stmt);
+	$user = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+	mysqli_stmt_close($stmt);
+	if (!$user) {
+		return null;
+	}
+
+	$notesStmt = mysqli_prepare($conn, "SELECT COUNT(*) AS c FROM uploaded_notes WHERE user_id=?");
+	mysqli_stmt_bind_param($notesStmt, 'i', $userId);
+	mysqli_stmt_execute($notesStmt);
+	$user['shared_notes_count'] = (int)mysqli_fetch_assoc(mysqli_stmt_get_result($notesStmt))['c'];
+	mysqli_stmt_close($notesStmt);
+
+	$approvedNotesStmt = mysqli_prepare($conn, "SELECT COUNT(*) AS c FROM uploaded_notes WHERE user_id=? AND status='approved'");
+	mysqli_stmt_bind_param($approvedNotesStmt, 'i', $userId);
+	mysqli_stmt_execute($approvedNotesStmt);
+	$user['approved_notes_count'] = (int)mysqli_fetch_assoc(mysqli_stmt_get_result($approvedNotesStmt))['c'];
+	mysqli_stmt_close($approvedNotesStmt);
+
+	$issuedStmt = mysqli_prepare($conn, "
+		SELECT ib.id, b.title, ib.issue_date, ib.return_date, ib.due_date, ib.fine, ib.fine_status, ib.fine_rate
+		FROM issued_books ib
+		JOIN books b ON b.id = ib.book_id
+		WHERE ib.user_id=?
+		ORDER BY ib.issue_date DESC
+	");
+	mysqli_stmt_bind_param($issuedStmt, 'i', $userId);
+	mysqli_stmt_execute($issuedStmt);
+	$issuedBooks = [];
+	$openCount = 0;
+	$res = mysqli_stmt_get_result($issuedStmt);
+	while ($row = mysqli_fetch_assoc($res)) {
+		$dueDate = $row['due_date'] ?: compute_due_date($row['issue_date'])->format('Y-m-d');
+		$fineRate = (float)($row['fine_rate'] ?? FINE_PER_DAY);
+		$row['due_date'] = $dueDate;
+		$row['current_fine'] = empty($row['return_date'])
+			? compute_fine($row['issue_date'], null, $dueDate, $fineRate)
+			: ((float)($row['fine'] ?? 0) ?: compute_fine($row['issue_date'], $row['return_date'], $dueDate, $fineRate));
+		$row['is_open'] = empty($row['return_date']);
+		if ($row['is_open']) {
+			$openCount++;
+		}
+		$issuedBooks[] = $row;
+	}
+	mysqli_stmt_close($issuedStmt);
+
+	$user['issued_books'] = $issuedBooks;
+	$user['open_books_count'] = $openCount;
+	$user['total_pending_fine'] = calculate_user_pending_fine($conn, $userId);
+
+	return $user;
+}
+
 /**
  * Update fines for all overdue books daily
  * This function should be called daily (e.g., via cron job or on admin dashboard load)
@@ -1261,89 +1515,85 @@ function ensure_due_notifications(mysqli $conn): array {
 				// Notification 2 days before due date
 				if ($diff === 2) {
 					if (!$checkNotificationSent($row['id'], 'due_soon_2', $today)) {
+						$funny = pick_funny_message('due_tomorrow');
 						$emailSubject = 'Book Due Soon - Reminder';
-						$emailBody = "<p>Hi {$row['name']},<br><br>This is a friendly reminder that the book <strong>{$row['title']}</strong> is due in 2 days (on {$dueDate}).<br><br>Please return it on time to avoid any fines.<br><br>Thank you!</p>";
-						
-						if (send_email($row['email'], $emailSubject, $emailBody)) {
-							$stats['due_soon']++;
-							$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'due_soon_2', ?)");
-							if ($ins) {
-								mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
-								mysqli_stmt_execute($ins);
-								mysqli_stmt_close($ins);
-							}
-							create_notification($conn, (int)$row['user_id'], 'Book Due Soon', "The book '{$row['title']}' is due in 2 days. Please return it on time.", 'info');
+						$emailBody = "<p>Hi {$row['name']},<br><br>{$funny}<br><br>The book <strong>{$row['title']}</strong> is due in 2 days (on {$dueDate}).</p>";
+						send_email($row['email'], $emailSubject, $emailBody);
+						$stats['due_soon']++;
+						$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'due_soon_2', ?)");
+						if ($ins) {
+							mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
+							mysqli_stmt_execute($ins);
+							mysqli_stmt_close($ins);
 						}
+						create_notification($conn, (int)$row['user_id'], '📚 Friendly Warning', "{$funny} ({$row['title']} due in 2 days)", 'warning');
 					}
 				}
 				// Notification 1 day before due date
 				elseif ($diff === 1) {
 					if (!$checkNotificationSent($row['id'], 'due_soon_1', $today)) {
+						$funny = pick_funny_message('due_tomorrow');
 						$emailSubject = 'Book Due Tomorrow - Important Reminder';
-						$emailBody = "<p>Hi {$row['name']},<br><br><strong>Important:</strong> The book <strong>{$row['title']}</strong> is due tomorrow ({$dueDate}).<br><br>Please return it on time to avoid fines.<br><br>Thank you!</p>";
-						
-						if (send_email($row['email'], $emailSubject, $emailBody)) {
-							$stats['due_soon']++;
-							$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'due_soon_1', ?)");
-							if ($ins) {
-								mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
-								mysqli_stmt_execute($ins);
-								mysqli_stmt_close($ins);
-							}
-							create_notification($conn, (int)$row['user_id'], 'Book Due Tomorrow', "The book '{$row['title']}' is due tomorrow. Please return it soon.", 'warning');
+						$emailBody = "<p>Hi {$row['name']},<br><br>{$funny}<br><br>The book <strong>{$row['title']}</strong> is due tomorrow ({$dueDate}).</p>";
+						send_email($row['email'], $emailSubject, $emailBody);
+						$stats['due_soon']++;
+						$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'due_soon_1', ?)");
+						if ($ins) {
+							mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
+							mysqli_stmt_execute($ins);
+							mysqli_stmt_close($ins);
 						}
+						create_notification($conn, (int)$row['user_id'], '⏰ Due Tomorrow', "{$funny} ({$row['title']})", 'warning');
 					}
 				}
 				// Notification on due date
 				elseif ($diff === 0 && !(int)$row['notified_due']) {
+					$funny = pick_funny_message('due_tomorrow');
 					$emailSubject = 'Book Due Today';
-					$emailBody = "<p>Hi {$row['name']},<br><br>The book <strong>{$row['title']}</strong> is due today ({$dueDate}).<br><br>Please return it as soon as possible to avoid fines.<br><br>Thank you!</p>";
-					
-					if (send_email($row['email'], $emailSubject, $emailBody)) {
-				$stats['due_today']++;
-						$updStmt = mysqli_prepare($conn, "UPDATE issued_books SET notified_due = 1 WHERE id = ?");
-						if ($updStmt) {
-							mysqli_stmt_bind_param($updStmt, 'i', $row['id']);
-							mysqli_stmt_execute($updStmt);
-							mysqli_stmt_close($updStmt);
-						}
-				$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'due', ?)");
-						if ($ins) {
-				mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
-				mysqli_stmt_execute($ins);
-				mysqli_stmt_close($ins);
-						}
-				create_notification($conn, (int)$row['user_id'], 'Book Due Today', "The book '{$row['title']}' is due today. Please return it soon.", 'warning');
-			}
+					$emailBody = "<p>Hi {$row['name']},<br><br>{$funny}<br><br>The book <strong>{$row['title']}</strong> is due today ({$dueDate}).</p>";
+					send_email($row['email'], $emailSubject, $emailBody);
+					$stats['due_today']++;
+					$updStmt = mysqli_prepare($conn, "UPDATE issued_books SET notified_due = 1 WHERE id = ?");
+					if ($updStmt) {
+						mysqli_stmt_bind_param($updStmt, 'i', $row['id']);
+						mysqli_stmt_execute($updStmt);
+						mysqli_stmt_close($updStmt);
+					}
+					$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'due', ?)");
+					if ($ins) {
+						mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
+						mysqli_stmt_execute($ins);
+						mysqli_stmt_close($ins);
+					}
+					create_notification($conn, (int)$row['user_id'], '📚 Due Today', "{$funny} ({$row['title']})", 'warning');
 				}
 				// Notification for overdue books (daily)
 				elseif ($diff < 0) {
 					if (!$checkNotificationSent($row['id'], 'overdue', $today)) {
-			$fine = compute_fine($row['issue_date'], null, $row['due_date']);
+						$fine = compute_fine($row['issue_date'], null, $row['due_date']);
 						$daysOverdue = abs($diff);
+						$funny = pick_funny_message('overdue');
 						$emailSubject = 'Book Overdue - Action Required';
-						$emailBody = "<p>Hi {$row['name']},<br><br><strong>Important:</strong> The book <strong>{$row['title']}</strong> is overdue by {$daysOverdue} day(s).<br><br>Current fine: <strong>₹" . number_format($fine, 2) . "</strong><br><br>Please return it immediately to prevent further fines.<br><br>Thank you!</p>";
-						
-						if (send_email($row['email'], $emailSubject, $emailBody)) {
-				$stats['overdue']++;
-							if (!(int)$row['notified_overdue']) {
-								$updStmt = mysqli_prepare($conn, "UPDATE issued_books SET notified_overdue = 1 WHERE id = ?");
-								if ($updStmt) {
-									mysqli_stmt_bind_param($updStmt, 'i', $row['id']);
-									mysqli_stmt_execute($updStmt);
-									mysqli_stmt_close($updStmt);
-								}
+						$emailBody = "<p>Hi {$row['name']},<br><br>{$funny}<br><br>The book <strong>{$row['title']}</strong> is overdue by {$daysOverdue} day(s). Fine: ₹" . number_format($fine, 2) . "</p>";
+						send_email($row['email'], $emailSubject, $emailBody);
+						$stats['overdue']++;
+						if (!(int)$row['notified_overdue']) {
+							$updStmt = mysqli_prepare($conn, "UPDATE issued_books SET notified_overdue = 1 WHERE id = ?");
+							if ($updStmt) {
+								mysqli_stmt_bind_param($updStmt, 'i', $row['id']);
+								mysqli_stmt_execute($updStmt);
+								mysqli_stmt_close($updStmt);
 							}
-				$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'overdue', ?)");
-							if ($ins) {
-				mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
-				mysqli_stmt_execute($ins);
-				mysqli_stmt_close($ins);
-							}
-							create_notification($conn, (int)$row['user_id'], 'Book Overdue', "The book '{$row['title']}' is overdue by {$daysOverdue} day(s). Fine: ₹" . number_format($fine, 2) . ". Please return it immediately.", 'danger');
-			}
-		}
-	}
+						}
+						$ins = mysqli_prepare($conn, "INSERT IGNORE INTO due_notifications (issued_book_id, notification_type, notified_on) VALUES (?, 'overdue', ?)");
+						if ($ins) {
+							mysqli_stmt_bind_param($ins, 'is', $row['id'], $today);
+							mysqli_stmt_execute($ins);
+							mysqli_stmt_close($ins);
+						}
+						create_notification($conn, (int)$row['user_id'], '🚨 Overdue Book', "{$funny} ({$row['title']} — ₹" . number_format($fine, 2) . " fine)", 'danger');
+					}
+				}
 			} catch (Exception $e) {
 				$stats['errors']++;
 				log_message("Exception processing notification for issued_book id {$row['id']}: " . $e->getMessage());

@@ -81,6 +81,7 @@ $_SESSION['user'] = [
 	'email' => $user['email'] ?? '',
 	'role' => $user['role'] ?? 'student',
 ];
+$_SESSION['just_logged_in'] = true;
 
 // Send optional funny notification
 if (function_exists('sendFunnyNotification')) {

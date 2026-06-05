@@ -132,6 +132,13 @@ $dashboardUrl = match($role) {
 				</li>
 			<?php endif; ?>
 			
+			<li class="sidebar-item">
+				<a href="/profile.php" class="sidebar-link <?php echo isActive('profile.php', $currentPage); ?>">
+					<i class="bi bi-person-badge"></i>
+					<span>My Profile</span>
+				</a>
+			</li>
+
 			<!-- Common Menu Items -->
 			<?php if ($role !== 'admin'): ?>
 				<li class="sidebar-item">
@@ -143,9 +150,16 @@ $dashboardUrl = match($role) {
 			<?php endif; ?>
 			
 			<li class="sidebar-item">
+				<a href="/notes/my_shared_notes.php" class="sidebar-link <?php echo isActive('my_shared_notes.php', $currentPage); ?>">
+					<i class="bi bi-journal-text"></i>
+					<span>My Shared Notes</span>
+				</a>
+			</li>
+
+			<li class="sidebar-item">
 				<a href="/notes/shared_notes.php" class="sidebar-link <?php echo isActive('shared_notes.php', $currentPage); ?>">
 					<i class="bi bi-folder2-open"></i>
-					<span>Shared Notes</span>
+					<span>All Shared Notes</span>
 				</a>
 			</li>
 			

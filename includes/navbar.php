@@ -58,8 +58,10 @@ if ($user && !$emailVerified) {
             </ul>
             <ul class="navbar-nav align-items-center">
                 <?php if ($user): ?>
-                    <li class="nav-item text-white-50 me-3">
-                        <i class="bi bi-person-circle me-1"></i><?php echo h($user['name']); ?><?php echo $verificationBadge; ?>
+                    <li class="nav-item me-3">
+                        <a href="/profile.php" class="nav-link text-white-50 px-0">
+                            <i class="bi bi-person-circle me-1"></i><?php echo h($user['name']); ?><?php echo $verificationBadge; ?>
+                        </a>
                     </li>
                     <!-- Notification Bell -->
                     <li class="nav-item dropdown me-2">

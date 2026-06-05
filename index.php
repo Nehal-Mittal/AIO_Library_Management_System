@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 						'email' => $user['email'],
 						'role' => $user['role'],
 					];
+					$_SESSION['just_logged_in'] = true;
 					
 					// Send funny notification on login
 					sendFunnyNotification($conn, (int)$user['id'], 'visit');
