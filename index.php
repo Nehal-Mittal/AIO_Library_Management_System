@@ -19,16 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			mysqli_stmt_close($stmt);
 
 			if ($user && password_verify($password, $user['password'])) {
-				if ($user['status'] !== 'active') {
+				if (!$user['email_verified']) {
+					$error = 'Please complete email verification. <a href="/register.php" class="alert-link">Finish registration</a> or <a href="/verify_otp.php" class="alert-link">verify OTP</a>.';
+				} elseif ($user['status'] !== 'active') {
 					if ($user['status'] === 'blacklisted') {
 						$error = 'Your account is blacklisted. Contact administration.';
 					} elseif ($user['status'] === 'pending') {
-						$error = 'Your account is pending approval by admin.';
+						$error = 'Your email is verified. Your account is pending approval by admin.';
 					} else {
 						$error = 'Your account is not active.';
 					}
-				} elseif (!$user['email_verified']) {
-					$error = 'Please verify your email before logging in. <a href="/verify_otp.php" class="alert-link">Verify now</a>.';
 				} else {
 					$_SESSION['user'] = [
 						'id' => (int)$user['id'],
@@ -179,8 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					});
 					</script>
 					<div class="text-center">
-						<a href="/register.php" class="me-2">New user? Register</a>
-						<a href="/verify_otp.php">Verify OTP</a>
+						<a href="/register.php">New user? Register</a>
 					</div>
 				</form>
 			</div>

@@ -35,7 +35,7 @@ include __DIR__ . '/includes/header.php';
 		<div class="card shadow-sm h-100">
 			<div class="card-body">
 				<h4 class="card-title mb-3">Verify Email</h4>
-				<p class="text-muted">Enter the 6-digit code sent to your email address.</p>
+				<p class="text-muted">Use this page if you registered but did not finish email verification. New users should verify during <a href="/register.php">registration</a>.</p>
 				<?php if ($emailMessage): ?>
 					<div class="alert alert-info alert-dismissible fade show" role="alert">
 						<?php echo h($emailMessage); ?>

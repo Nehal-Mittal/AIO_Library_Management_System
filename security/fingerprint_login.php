@@ -50,20 +50,20 @@ if (!$user) {
 $status = $user['status'] ?? 'pending';
 $emailVerified = $user['email_verified'] ?? 0;
 
+if (!$emailVerified) {
+	http_response_code(403);
+	echo json_encode(['success' => false, 'message' => 'Please complete email verification before using fingerprint login.']);
+	exit;
+}
+
 if ($status !== 'active') {
 	http_response_code(403);
 	$statusMsg = match($status) {
-		'pending' => 'Your account is pending approval. Please contact admin.',
+		'pending' => 'Your email is verified. Your account is pending admin approval.',
 		'blacklisted' => 'Your account is blacklisted. Please contact admin.',
 		default => 'Your account is not active.'
 	};
 	echo json_encode(['success' => false, 'message' => $statusMsg]);
-	exit;
-}
-
-if (!$emailVerified) {
-	http_response_code(403);
-	echo json_encode(['success' => false, 'message' => 'Please verify your email before using fingerprint login.']);
 	exit;
 }
 
